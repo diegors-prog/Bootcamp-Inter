@@ -1,7 +1,7 @@
 import api from '../api';
 
 export const request = (value: number) => {
-  return api.post('/pix/request', value);
+  return api.post('/pix/request', { value });
 };
 
 export const pay = (key: string) => {

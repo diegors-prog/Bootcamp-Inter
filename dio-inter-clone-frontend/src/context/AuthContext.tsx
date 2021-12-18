@@ -1,4 +1,5 @@
-import { createContext, useEffect, useState, useCallback } from 'react';
+import { Axios } from 'axios';
+import { createContext, useState } from 'react';
 import { signIn, SignInData, signUp, SignUpData, me} from '../services/resources/user';
 
 interface UserDto {
@@ -13,20 +14,30 @@ interface UserDto {
 
 interface ContextData {
   user: UserDto;
-  userSignIn: (userData: SignInData) => void;
-  userSignUp: (userData: SignUpData) => void;
+  userSignIn: (userData: SignInData) => Promise<UserDto>;
+  userSignUp: (userData: SignUpData) => Promise<UserDto>;
+  getCurrentUser: () => Promise<UserDto>;
 }
 
 export const AuthContext = createContext<ContextData>({} as ContextData);
 
 export const AuthProbider: React.FC = ({children}) => {
 
-  const [user, setUser] = useState<UserDto>({} as UserDto);
+  const [user, setUser] = useState<UserDto>(() => {
+    const user = localStorage.getItem('@Inter:User');
+
+    if(user) {
+      return JSON.parse(user);
+    }
+
+    return {} as UserDto;
+  });
 
   const userSignIn = async (userData: SignInData) => {
     const {data} = await signIn(userData);
     
     if(data?.status === 'error') {
+      console.log(data);      
       return data;
     }
 
@@ -34,31 +45,34 @@ export const AuthProbider: React.FC = ({children}) => {
       localStorage.setItem('@Inter:Token', data.accessToken);
     }
 
-    await getCurrentUser();
+    return getCurrentUser();
+
+    
   }
 
   const getCurrentUser = async () => {
     const {data} = await me();
     setUser(data);
+    localStorage.setItem('@Inter:User', JSON.stringify(user));
     return data;
   }
 
   const userSignUp = async (userData: SignUpData) => {
     const {data} = await signUp(userData);
-    
+
     if(data?.status === 'error') {
       return data;
     }
-
+    
     if(data.accessToken) {
       localStorage.setItem('@Inter:Token', data.accessToken);
     }
 
-    getCurrentUser();
+    return getCurrentUser();
   }
 
   return(
-    <AuthContext.Provider value={{user, userSignIn, userSignUp}}>
+    <AuthContext.Provider value={{user, userSignIn, userSignUp, getCurrentUser}}>
         {children}
     </AuthContext.Provider>
   )
